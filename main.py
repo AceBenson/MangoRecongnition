@@ -1,11 +1,6 @@
-from CNN import CNN
+from Essemble import Essemble
 
 if __name__ == '__main__':
-    m_CNN = CNN()
-
-    m_CNN.createModel()
-    m_CNN.trainingModel()
-    m_CNN.showFigure()
-    # m_CNN.loadModel('MyModel')
-
-    m_CNN.predict()
+    m_Essemble = Essemble()
+    m_Essemble.readComparedData()
+    m_Essemble.predict()

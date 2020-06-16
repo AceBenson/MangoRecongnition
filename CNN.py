@@ -1,6 +1,7 @@
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, Activation, Conv2D, MaxPooling2D, Flatten, Dropout
 from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras import optimizers
 
 from PIL import Image
 import numpy as np
@@ -43,46 +44,18 @@ class CNN:
 
     # take dev as test data, and validation is split from train
     # use real "test" data when 6/17
-    test_generator = test_datagen.flow_from_directory(
-        directory=DATA_DIR + '/dev',
-        target_size=(224, 224),
-        batch_size=16,
-        shuffle=False,
-    )
+    # test_generator = test_datagen.flow_from_directory(
+    #     directory=DATA_DIR + '/origin_dev',
+    #     target_size=(224, 224),
+    #     batch_size=16,
+    #     shuffle=False,
+    # )
 
 
     # ----------Build model----------
     def createModel(self):
         print('Createing Model...')
         self.model = Sequential()
-        
-        # self.model.add(Conv2D(32,(3,3), input_shape=(224, 224, 3), activation='relu'))
-        # self.model.add(Conv2D(32,(3,3), activation='relu'))
-        # # self.model.add(Conv2D(32,(3,3), activation='relu'))
-        # self.model.add(MaxPooling2D(pool_size=(2,2)))
-        # # self.model.add(Dropout(0.1))
-
-        # self.model.add(Conv2D(64,(3,3), activation='relu'))
-        # self.model.add(Conv2D(64,(3,3), activation='relu'))
-        # # self.model.add(Conv2D(64,(3,3), activation='relu'))
-        # self.model.add(MaxPooling2D(pool_size=(2,2)))
-        # # self.model.add(Dropout(0.1))
-
-        # self.model.add(Conv2D(128,(3,3), activation='relu'))
-        # self.model.add(Conv2D(128,(3,3), activation='relu'))
-        # self.model.add(MaxPooling2D(pool_size=(2,2)))
-        # # self.model.add(Dropout(0.25))
-
-        # self.model.add(Flatten())
-        # self.model.add(Dropout(0.1))
-
-        # self.model.add(Dense(512, activation='relu'))
-        # self.model.add(Dropout(0.1))
-
-        # self.model.add(Dense(3)) # number of classes
-        # self.model.add(Activation('softmax'))
-
-
         # 1st Conv layer
         self.model.add(Conv2D(16, kernel_size=(3, 3), activation='relu', input_shape=(224, 224, 3), padding='same'))
         self.model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
@@ -100,23 +73,35 @@ class CNN:
         self.model.add(MaxPooling2D(pool_size=(2, 2), padding='same'))
         # Fully-Connected layer
         self.model.add(Flatten())
-        self.model.add(Dense(7680, activation='relu'))
+        self.model.add(Dropout(0.2))
         self.model.add(Dense(256, activation='relu'))
         self.model.add(Dense(3, activation='softmax'))
+        
+        opt = 'adam'
+        if self.name == 'Nadam':
+            print("Use Nadam")
+            opt = optimizers.Nadam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=None, schedule_decay=0.004)
+        elif self.name == 'Adadelta':
+            print("Use Adadelta")
+            opt = optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0)
+        elif self.name == 'Adagrad':
+            print("Use Adagrad")
+            opt = optimizers.Adagrad(lr=0.01, epsilon=None, decay=0.0)
 
-
+        self.model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
+        self.model.summary()
 
         print('End of creating model')
 
     def trainingModel(self):
         # adjust optimizer 
-        self.model.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
-        self.model.summary()
-        self.History = self.model.fit(self.train_generator, epochs=50, validation_data=self.validation_generator)
-        self.model.save('MyModel')
+        m_callbacks = tf.keras.callbacks.ModelCheckpoint('./models/model_' + self.name +  str(self.index) + '.h5', save_best_only=True, save_weights_only=False)
+        self.History = self.model.fit(self.train_generator, callbacks=[m_callbacks], epochs=30, validation_data=self.validation_generator)
+        # self.model.save('models/model_' + self.name + str(self.index) + '.h5')
 
-    def loadModel(self, modelName):
-        self.model = tf.keras.models.load_model(modelName)
+    def loadModel(self):
+        self.model = tf.keras.models.load_model('models/model_' + self.name + str(self.index) + '.h5')
+        return self.model
 
     def showFigure(self):
         plt.figure(figsize = (15,5))
@@ -135,9 +120,9 @@ class CNN:
         plt.ylabel('loss')
         plt.xlabel('epoch')
         plt.legend(['train', 'validation'], loc='upper left')
-        plt.savefig('picture/modelAccAndLoss.png')
-        plt.show()
-        plt.show()
+        plt.savefig('pictures/'+self.name+'_accandloss_'+str(self.index)+'.png')
+        # plt.show()
+        # plt.show()
 
     def predict(self):
         self.pred = self.model.predict(self.test_generator)
@@ -148,7 +133,9 @@ class CNN:
         pred_result = [class_map[idx] for idx in pred_idx]
 
         sub = pd.DataFrame({"image_id": filenames, "label": pred_result})
-        sub.to_csv("result.csv", index = False, header = True)
+        sub.to_csv("result_" + self.name + ".csv", index = False, header = True)
 
-    def __init__(self):
+    def __init__(self, name, index):
         print("init")
+        self.name = name
+        self.index = index
