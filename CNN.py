@@ -11,7 +11,7 @@ import pandas as pd
 import tensorflow as tf
 
 class CNN:
-    DATA_DIR = 'C:\\Users\\User\\Desktop\\Mango\\MangoRecongnition\\MyTrainingData'
+    DATA_DIR = 'C:\\Users\\User\\Desktop\\Mango\\MangoRecongnition\\DataAddGan'
 
     train_datagen = ImageDataGenerator(
         rescale=1./255, 
@@ -25,7 +25,8 @@ class CNN:
     )
 
     test_datagen = ImageDataGenerator(
-        rescale=1./255
+        rescale=1./255,
+        dtype='float32'
     )
 
     train_generator = train_datagen.flow_from_directory(
@@ -87,6 +88,9 @@ class CNN:
         elif self.name == 'Adagrad':
             print("Use Adagrad")
             opt = optimizers.Adagrad(lr=0.01, epsilon=None, decay=0.0)
+        elif self.name == 'GanAdadelta':
+            print("Use GanAdadelta")
+            opt = optimizers.Adadelta(lr=1.0, rho=0.95, epsilon=None, decay=0.0)
 
         self.model.compile(loss='categorical_crossentropy', optimizer=opt, metrics=['accuracy'])
         self.model.summary()
